@@ -1,0 +1,86 @@
+# Long-Running Task Execution Spec
+
+This file defines what Codex should do when the user invokes `long-running-task` in a normal Codex conversation.
+
+## Invocation Contract
+
+Trigger this mode when the user says things like:
+
+- "use long-running-task"
+- "continue task"
+- "keep developing"
+- "do not stop between phases"
+- "run until done"
+- "continue optimizing"
+
+The user should not need to paste a long command. The skill should infer the project path and objective.
+
+## Project Path Rule
+
+Use the current Codex working directory as the target project path.
+
+Only use another project path when the user explicitly provides one.
+
+Use `--project .` in commands when running from the target project directory. This lets Codex naturally match the current task path.
+
+## Objective Rule
+
+Choose the objective in this order:
+
+1. The explicit objective in the user's latest message.
+2. The current `.codex-longrun/state.json` objective, if it exists and is not done or blocked.
+3. A concise inferred objective from the user's latest request and visible project context.
+
+Do not ask for an objective unless no safe inference is possible.
+
+## Normal Conversation Startup
+
+From a normal Codex conversation, execute this flow:
+
+```powershell
+python -m longrun_supervisor --project . doctor
+python -m longrun_supervisor --project . status
+```
+
+If state is missing, `done`, `blocked`, or about a different objective:
+
+```powershell
+python -m longrun_supervisor --project . init --objective "<objective>" --force
+```
+
+Then run:
+
+```powershell
+python -m longrun_supervisor --project . run --max-iterations 999999 --max-runtime-seconds 0 --per-run-timeout-seconds 1800 --max-stagnant-runs 999999 --max-repeated-failure-runs 10 --sandbox workspace-write --full-auto
+```
+
+## Supervisor Worker Mode
+
+Do not start `supervisor.py` when already inside a supervisor-managed Codex run.
+
+Treat either of these as a worker-mode marker:
+
+- the prompt contains `SUPERVISOR_WORKER_MODE`
+- the environment contains `LONGRUN_SUPERVISOR_WORKER=1`
+
+In worker mode, follow `SKILL.md` directly:
+
+1. Read `.codex-longrun/state.json`.
+2. Continue the current phase.
+3. Run tests.
+4. Debug failures.
+5. Update state and logs.
+6. Stop only when state is `done` or `blocked`.
+
+## Stop Boundaries
+
+The supervisor should keep going across normal phase boundaries, but it must still stop for:
+
+- `phase_status = done`
+- `phase_status = blocked`
+- required credentials, payment, private data, or external account access
+- destructive operations requiring user confirmation
+- repeated unproductive failures that hit supervisor guardrails
+- Codex product or runtime limits outside the skill's control
+
+Do not promise literal infinite execution. Promise state-driven continuation until done or blocked.

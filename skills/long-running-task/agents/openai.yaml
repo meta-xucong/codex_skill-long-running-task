@@ -1,0 +1,4 @@
+interface:
+  display_name: "Long Running Task"
+  short_description: "Continue phased Codex tasks safely"
+  default_prompt: "Use long-running-task to run the supervisor on the current project until done or blocked."

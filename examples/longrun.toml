@@ -1,0 +1,15 @@
+[run]
+project = "."
+objective = "Describe the long-running task objective here."
+max_iterations = 5
+max_runtime_seconds = 0
+per_run_timeout_seconds = 0
+max_stagnant_runs = 2
+max_repeated_failure_runs = 3
+
+[codex]
+codex_bin = "codex"
+model = ""
+sandbox = "workspace-write"
+full_auto = true
+dangerously_bypass_approvals_and_sandbox = false
