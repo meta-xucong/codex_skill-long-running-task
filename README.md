@@ -1,6 +1,6 @@
-# Codex Long Running Task
+# codex_skill: Long Running Task
 
-Reusable Codex skill plus a Python supervisor for state-driven long-running development tasks.
+Reusable `codex_skill` plus a Python supervisor for state-driven long-running development tasks.
 
 The skill teaches Codex how to continue through phases, run tests, debug failures, and stop only when the task is done or blocked. The supervisor handles the outer loop by repeatedly invoking Codex with persistent `.codex-longrun/` state.
 
@@ -36,7 +36,7 @@ Restart Codex or open a new Codex conversation so the skill metadata is reloaded
 From a Codex conversation in the target project, say:
 
 ```text
-使用 long-running-task 持续开发当前项目，直到完成或遇到 blocker
+Use long-running-task to keep developing the current project until it is done or blocked.
 ```
 
 The skill uses the current working directory as the project path by default.

@@ -160,10 +160,40 @@ Stop and mark `done` when:
 - relevant tests or checks have passed
 - no clear objective-linked next action remains
 
+## Manual Review Notification
+
+When a long-running task is about to stop and wait for the user to review results, send a ServerChan notification before the final response.
+
+This applies when:
+
+- `phase_status` is `done`
+- `phase_status` is `blocked`
+- the supervisor has reached a guardrail and the user needs to inspect the result
+- Codex is otherwise ending a long-running run and human review is required
+
+Use the bundled helper:
+
+```powershell
+python "%USERPROFILE%\.codex\skills\long-running-task\scripts\notify_serverchan.py" --project <project-path> --status <done|blocked|stopped> --title "长任务已停止，等待验收" --message "<short summary>"
+```
+
+The helper reads `SCT_SENDKEY` from the environment first, then `%USERPROFILE%\.codex\secrets\serverchan_sendkey.txt`. Do not print the full SendKey in normal output.
+
+Keep the notification concise. Include:
+
+- project path or project name
+- final status
+- what was completed or why it stopped
+- the most important verification result
+- what the user should inspect next
+
+If the notification command fails, mention the failure in the final response, but do not continue working solely to retry the notification unless the failure is obviously transient.
+
 ## Bundled Resources
 
 - `scripts/init_longrun_state.py`: initialize `.codex-longrun/` in a target project.
 - `scripts/validate_state.py`: validate `.codex-longrun/state.json`.
+- `scripts/notify_serverchan.py`: send a ServerChan/Server酱 review reminder when a long-running run stops.
 - `references/state-schema.md`: state file schema and examples.
 - `references/supervisor-protocol.md`: prompt and orchestration contract for external supervisor processes.
 - `references/execution-spec.md`: automatic invocation rules for normal Codex conversations.

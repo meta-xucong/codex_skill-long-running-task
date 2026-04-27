@@ -83,4 +83,6 @@ The supervisor should keep going across normal phase boundaries, but it must sti
 - repeated unproductive failures that hit supervisor guardrails
 - Codex product or runtime limits outside the skill's control
 
+Before a normal conversation or supervisor-managed worker stops and hands control back to the user for review, send the ServerChan review reminder described in `SKILL.md` under "Manual Review Notification".
+
 Do not promise literal infinite execution. Promise state-driven continuation until done or blocked.

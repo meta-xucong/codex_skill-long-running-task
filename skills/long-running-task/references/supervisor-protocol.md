@@ -31,6 +31,7 @@ If the current phase is incomplete, finish it and run relevant tests.
 If tests fail, debug and rerun them.
 If the current phase is verified, choose the next useful phase from the roadmap or project evidence.
 Update state before stopping.
+Before the final response, send the ServerChan review reminder described in SKILL.md when phase_status is done or blocked.
 Stop only when phase_status is done or blocked.
 ```
 
@@ -48,6 +49,8 @@ Stop when:
 - `phase_status` is `done`
 - `phase_status` is `blocked`
 - max iterations, runtime, or stagnant-run limits are reached
+
+When stopping for any of these reasons, the final worker run should notify the user through ServerChan before returning its final message.
 
 ## Recommended Codex CLI Flags
 
