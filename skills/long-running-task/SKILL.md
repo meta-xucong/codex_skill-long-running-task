@@ -31,6 +31,16 @@ Important recursion guard: if the prompt says `SUPERVISOR_WORKER_MODE`, or the e
 
 See `references/execution-spec.md` for the full automatic execution contract.
 
+## Windows Encoding Guardrail
+
+When inspecting this skill on Windows PowerShell, UTF-8 Chinese text may look garbled in raw console output even if the file contents are correct.
+
+Before concluding that `notify_serverchan.py`, `SKILL.md`, or another UTF-8 file is broken:
+
+1. Verify the file with a UTF-8 aware read path such as VS Code, `Get-Content -Encoding utf8`, or Python `Path(...).read_text(encoding="utf-8")`.
+2. Treat mojibake in raw PowerShell output as a display issue unless a direct UTF-8 read shows the same corruption.
+3. Do not rewrite or save a file only to "fix" mojibake that appears in a terminal view.
+
 ## Operating Loop
 
 Use this skill to continue a development task until the project state says the objective is done or blocked.

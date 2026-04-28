@@ -23,6 +23,16 @@ Only use another project path when the user explicitly provides one.
 
 Use `--project .` in commands when running from the target project directory. This lets Codex naturally match the current task path.
 
+## Windows Encoding Guardrail
+
+On Windows PowerShell, UTF-8 Chinese text may appear garbled in console output even when the underlying file is correct.
+
+If `SKILL.md`, `notify_serverchan.py`, or related files look garbled:
+
+1. Re-check with a UTF-8 aware reader such as VS Code, `Get-Content -Encoding utf8`, or Python `Path(...).read_text(encoding="utf-8")`.
+2. Treat raw-console mojibake as a display issue unless the direct UTF-8 read is also wrong.
+3. Do not patch or rewrite the file solely based on the console rendering.
+
 ## Objective Rule
 
 Choose the objective in this order:
