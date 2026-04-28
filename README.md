@@ -31,6 +31,19 @@ Copy-Item -LiteralPath ".\skills\long-running-task" -Destination $dest -Recurse
 
 Restart Codex or open a new Codex conversation so the skill metadata is reloaded.
 
+### Windows UTF-8 Note
+
+On some Windows PowerShell consoles, UTF-8 Chinese text can appear garbled even when the repository files are correct.
+
+Before treating garbled Chinese output as a repository bug:
+
+- verify the file in VS Code or another UTF-8 aware editor
+- prefer `Get-Content -Encoding utf8` when inspecting files in PowerShell
+- use Python for a direct UTF-8 read when needed, for example `python -c "from pathlib import Path; print(Path(r'path/to/file').read_text(encoding='utf-8'))"`
+- do not rewrite or save a file only because raw console output looks garbled
+
+This is usually a terminal rendering issue, not a file corruption issue.
+
 ## Use
 
 From a Codex conversation in the target project, say:
