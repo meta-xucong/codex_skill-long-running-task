@@ -45,7 +45,26 @@ Do not ask for an objective unless no safe inference is possible.
 
 ## Normal Conversation Startup
 
-From a normal Codex conversation, execute this flow:
+From a normal Codex conversation, prefer the bundled launcher when the user wants the task to run until completion or the run may outlive the current tool-call timeout:
+
+```powershell
+python "%USERPROFILE%\.codex\skills\long-running-task\scripts\run_until_complete.py" --project . --objective "<objective>" --detach
+```
+
+Use foreground mode only when the expected run is short enough to wait for:
+
+```powershell
+python "%USERPROFILE%\.codex\skills\long-running-task\scripts\run_until_complete.py" --project . --objective "<objective>"
+```
+
+After a detached launch, tell the user the PID, log path, and how to monitor:
+
+```powershell
+python -m longrun_supervisor --project . status
+python -m longrun_supervisor --project . report
+```
+
+If the launcher is unavailable, execute this manual flow:
 
 ```powershell
 python -m longrun_supervisor --project . doctor
@@ -61,7 +80,7 @@ python -m longrun_supervisor --project . init --objective "<objective>" --force
 Then run:
 
 ```powershell
-python -m longrun_supervisor --project . run --max-iterations 999999 --max-runtime-seconds 0 --per-run-timeout-seconds 1800 --max-stagnant-runs 999999 --max-repeated-failure-runs 10 --sandbox workspace-write --full-auto
+python -m longrun_supervisor --project . run --max-iterations 999999 --max-runtime-seconds 0 --per-run-timeout-seconds 1800 --max-stagnant-runs 999999 --sandbox workspace-write --full-auto
 ```
 
 ## Supervisor Worker Mode
