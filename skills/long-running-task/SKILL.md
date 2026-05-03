@@ -11,12 +11,39 @@ When the user invokes this skill from a normal Codex conversation and asks to co
 
 Use the current Codex working directory as the target project path unless the user explicitly provides another path. Do not ask the user to paste a project path when the current working directory is already the target project.
 
-Preferred supervisor command after installing this repository with `pip install -e .`:
+### One-Shot Completion Mode
+
+When the user asks to "run until done", "one-shot", "彻底一次性跑完", "不要停", or the task is likely to outlive a single Codex tool call, prefer the bundled one-shot launcher. It initializes or validates state, starts `longrun_supervisor`, and can detach it so the run continues outside the current conversation turn until `.codex-longrun/state.json` becomes `done` or `blocked`.
+
+Foreground one-shot:
+
+```powershell
+python "%USERPROFILE%\.codex\skills\long-running-task\scripts\run_until_complete.py" --project . --objective "<objective inferred from the user's request>"
+```
+
+Detached one-shot for truly long work:
+
+```powershell
+python "%USERPROFILE%\.codex\skills\long-running-task\scripts\run_until_complete.py" --project . --objective "<objective inferred from the user's request>" --detach
+```
+
+Add `--force-init` when the existing `.codex-longrun/state.json` belongs to a different objective. Without `--force-init`, the launcher preserves active unfinished state and only initializes when state is missing, `done`, or `blocked`.
+
+After a detached launch, report the PID, log path, and these monitor commands to the user:
+
+```powershell
+python -m longrun_supervisor --project . status
+python -m longrun_supervisor --project . report
+```
+
+Use detached mode when a foreground shell timeout would otherwise kill the supervisor. Do not use detached mode when the task needs an immediate human decision, credentials, destructive approval, or when this run is already in supervisor worker mode.
+
+Manual supervisor command after installing this repository with `pip install -e .`:
 
 ```powershell
 python -m longrun_supervisor --project . doctor
 python -m longrun_supervisor --project . status
-python -m longrun_supervisor --project . run --max-iterations 999999 --max-runtime-seconds 0 --per-run-timeout-seconds 1800 --max-stagnant-runs 999999 --max-repeated-failure-runs 10 --sandbox workspace-write --full-auto
+python -m longrun_supervisor --project . run --max-iterations 999999 --max-runtime-seconds 0 --per-run-timeout-seconds 1800 --max-stagnant-runs 999999 --sandbox workspace-write --full-auto
 ```
 
 If `.codex-longrun/state.json` is missing, `done`, `blocked`, or clearly about a different objective, initialize it first:
@@ -201,6 +228,7 @@ If the notification command fails, mention the failure in the final response, bu
 
 ## Bundled Resources
 
+- `scripts/run_until_complete.py`: one-shot launcher for foreground or detached state-driven supervisor runs.
 - `scripts/init_longrun_state.py`: initialize `.codex-longrun/` in a target project.
 - `scripts/validate_state.py`: validate `.codex-longrun/state.json`.
 - `scripts/notify_serverchan.py`: send a ServerChan/Server酱 review reminder when a long-running run stops.

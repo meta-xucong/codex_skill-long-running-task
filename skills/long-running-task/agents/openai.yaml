@@ -1,4 +1,4 @@
 interface:
   display_name: "Long Running Task"
-  short_description: "Continue phased Codex tasks safely"
-  default_prompt: "Use long-running-task to run the supervisor on the current project until done or blocked."
+  short_description: "Run phased Codex tasks until done"
+  default_prompt: "Use long-running-task one-shot mode on the current project, starting the detached supervisor when the task may outlive this turn, and continue until done or blocked."
