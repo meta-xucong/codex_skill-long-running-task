@@ -15,6 +15,8 @@ Use the current Codex working directory as the target project path unless the us
 
 When the user asks to "run until done", "one-shot", "彻底一次性跑完", "不要停", or the task is likely to outlive a single Codex tool call, prefer the bundled one-shot launcher. It initializes or validates state, starts `longrun_supervisor`, and can detach it so the run continues outside the current conversation turn until `.codex-longrun/state.json` becomes `done` or `blocked`.
 
+`run_until_complete.py` sends a ServerChan review notification automatically when the run stops (`done`, `blocked`, or guarded stop) unless `--no-notify-on-exit` is passed.
+
 Foreground one-shot:
 
 ```powershell
@@ -53,6 +55,14 @@ python -m longrun_supervisor --project . init --objective "<objective inferred f
 ```
 
 If `python -m longrun_supervisor` is unavailable but a local checkout path is known, use that checkout's `supervisor.py` instead.
+
+You can pass the fallback script path explicitly:
+
+```powershell
+python "%USERPROFILE%\.codex\skills\long-running-task\scripts\run_until_complete.py" --project . --objective "<objective>" --supervisor-script "<path-to-supervisor.py>"
+```
+
+Or set `LONGRUN_SUPERVISOR_PY` in the environment.
 
 Important recursion guard: if the prompt says `SUPERVISOR_WORKER_MODE`, or the environment contains `LONGRUN_SUPERVISOR_WORKER=1`, do not start `supervisor.py`. In that case, this Codex run is already being managed by the supervisor; follow the Operating Loop below directly.
 
@@ -200,6 +210,8 @@ Stop and mark `done` when:
 ## Manual Review Notification
 
 When a long-running task is about to stop and wait for the user to review results, send a ServerChan notification before the final response.
+
+When using `scripts/run_until_complete.py`, this reminder is sent automatically by default. Keep the manual helper flow below for worker-mode/manual orchestration paths.
 
 This applies when:
 

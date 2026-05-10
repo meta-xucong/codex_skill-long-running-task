@@ -57,7 +57,13 @@ Use foreground mode only when the expected run is short enough to wait for:
 python "%USERPROFILE%\.codex\skills\long-running-task\scripts\run_until_complete.py" --project . --objective "<objective>"
 ```
 
-After a detached launch, tell the user the PID, log path, and how to monitor:
+`run_until_complete.py` should send the ServerChan review reminder automatically when it stops, unless explicitly disabled with `--no-notify-on-exit`.
+
+After a detached launch, tell the user the PID, log path, and how to monitor. Prefer the `status_command` and `report_command` emitted by the launcher payload, because the supervisor may be invoked via module or via `supervisor.py` script fallback.
+
+If `python -m longrun_supervisor` is unavailable, pass `--supervisor-script <path-to-supervisor.py>` or set `LONGRUN_SUPERVISOR_PY`.
+
+Example module-based monitor commands:
 
 ```powershell
 python -m longrun_supervisor --project . status
@@ -112,6 +118,6 @@ The supervisor should keep going across normal phase boundaries, but it must sti
 - repeated unproductive failures that hit supervisor guardrails
 - Codex product or runtime limits outside the skill's control
 
-Before a normal conversation or supervisor-managed worker stops and hands control back to the user for review, send the ServerChan review reminder described in `SKILL.md` under "Manual Review Notification".
+Before a normal conversation or supervisor-managed worker stops and hands control back to the user for review, send the ServerChan review reminder described in `SKILL.md` under "Manual Review Notification". When using `run_until_complete.py`, this should happen automatically by default.
 
 Do not promise literal infinite execution. Promise state-driven continuation until done or blocked.
