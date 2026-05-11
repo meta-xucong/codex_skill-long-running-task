@@ -15,7 +15,8 @@ Use the current Codex working directory as the target project path unless the us
 
 When the user asks to "run until done", "one-shot", "彻底一次性跑完", "不要停", or the task is likely to outlive a single Codex tool call, prefer the bundled one-shot launcher. It initializes or validates state, starts `longrun_supervisor`, and can detach it so the run continues outside the current conversation turn until `.codex-longrun/state.json` becomes `done` or `blocked`.
 
-`run_until_complete.py` sends a ServerChan review notification automatically when the run stops (`done`, `blocked`, or guarded stop) unless `--no-notify-on-exit` is passed.
+`run_until_complete.py` sends a ServerChan review notification automatically when the run stops (`done`, `blocked`, or guarded stop).  
+Hard rule: for this skill, notification is mandatory and cannot be treated as optional.
 
 Foreground one-shot:
 
@@ -211,7 +212,15 @@ Stop and mark `done` when:
 
 When a long-running task is about to stop and wait for the user to review results, send a ServerChan notification before the final response.
 
-When using `scripts/run_until_complete.py`, this reminder is sent automatically by default. Keep the manual helper flow below for worker-mode/manual orchestration paths.
+When using `scripts/run_until_complete.py`, this reminder is always attempted automatically. Keep the manual helper flow below for worker-mode/manual orchestration paths.
+
+Hard requirement (strict):
+
+1. If this skill is used, the run must attempt a WeChat(ServerChan) push before returning the final response.
+2. Do not disable notification with flags such as `--no-notify-on-exit`.
+3. If notification fails, retry (default 3 attempts with short delay) before returning.
+4. If all retries fail, explicitly report the failure as a blocking delivery risk and include the error details.
+5. A long-running task is not considered fully delivered unless notification succeeded or an explicit delivery blocker is recorded.
 
 This applies when:
 
@@ -236,7 +245,7 @@ Keep the notification concise. Include:
 - the most important verification result
 - what the user should inspect next
 
-If the notification command fails, mention the failure in the final response, but do not continue working solely to retry the notification unless the failure is obviously transient.
+If the notification command fails, retry first; after retries are exhausted, mention the failure in the final response as a blocker.
 
 ## Bundled Resources
 

@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import textwrap
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -116,6 +117,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--short", default="Codex 长任务需要人工查看")
     parser.add_argument("--sendkey", default=load_sendkey())
     parser.add_argument("--timeout", type=int, default=10)
+    parser.add_argument("--retries", type=int, default=3)
+    parser.add_argument("--retry-delay-seconds", type=int, default=2)
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args(argv)
 
@@ -143,14 +146,25 @@ def main(argv: list[str]) -> int:
         print(json.dumps({"dry_run": True, "title": args.title, "short": args.short, "desp": desp}, ensure_ascii=False))
         return 0
 
-    try:
-        result = send(args.sendkey, args.title, args.short, desp, args.timeout)
-    except urllib.error.URLError as exc:
-        print(json.dumps({"code": -1, "message": str(exc)}, ensure_ascii=False), file=sys.stderr)
-        return 1
+    retries = max(1, int(args.retries or 1))
+    delay_seconds = max(0, int(args.retry_delay_seconds or 0))
+    attempts: list[dict[str, object]] = []
+    for index in range(1, retries + 1):
+        try:
+            result = send(args.sendkey, args.title, args.short, desp, args.timeout)
+            attempts.append({"attempt": index, "result": result})
+            if result.get("code") == 0:
+                payload = {"ok": True, "attempts": attempts, "result": result}
+                print(json.dumps(payload, ensure_ascii=False))
+                return 0
+        except urllib.error.URLError as exc:
+            attempts.append({"attempt": index, "error": str(exc)})
+        if index < retries and delay_seconds > 0:
+            time.sleep(delay_seconds)
 
-    print(json.dumps(result, ensure_ascii=False))
-    return 0 if result.get("code") == 0 else 1
+    payload = {"ok": False, "attempts": attempts}
+    print(json.dumps(payload, ensure_ascii=False), file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":

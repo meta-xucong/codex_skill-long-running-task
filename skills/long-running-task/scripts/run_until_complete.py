@@ -20,6 +20,8 @@ from typing import Any
 NOTIFY_DEFAULT_TITLE = "长任务已停止，等待验收"
 NOTIFY_DEFAULT_SHORT = "Codex 长任务需要人工查看"
 NOTIFY_DEFAULT_TIMEOUT = 10
+NOTIFY_DEFAULT_RETRIES = 3
+NOTIFY_DEFAULT_RETRY_DELAY_SECONDS = 2
 TERMINAL_PHASE_STATUSES = {"done", "blocked"}
 
 
@@ -64,10 +66,16 @@ def main() -> int:
     parser.add_argument("--notify-title", default=NOTIFY_DEFAULT_TITLE)
     parser.add_argument("--notify-short", default=NOTIFY_DEFAULT_SHORT)
     parser.add_argument("--notify-timeout", type=int, default=NOTIFY_DEFAULT_TIMEOUT)
+    parser.add_argument("--notify-retries", type=int, default=NOTIFY_DEFAULT_RETRIES)
+    parser.add_argument("--notify-retry-delay-seconds", type=int, default=NOTIFY_DEFAULT_RETRY_DELAY_SECONDS)
     parser.add_argument("--notify-message", default="")
     parser.add_argument("--notify-dry-run", action="store_true")
     parser.add_argument("--detached-worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+
+    # Hard guard: long-running skill always attempts WeChat notification.
+    if not args.notify_on_exit:
+        args.notify_on_exit = True
 
     project = args.project.resolve()
     if not project.exists():
@@ -294,6 +302,10 @@ def build_detached_worker_command(args: argparse.Namespace, project: Path) -> li
         str(max(1, args.max_stagnant_runs)),
         "--notify-timeout",
         str(max(1, args.notify_timeout)),
+        "--notify-retries",
+        str(max(1, args.notify_retries)),
+        "--notify-retry-delay-seconds",
+        str(max(0, args.notify_retry_delay_seconds)),
         "--notify-title",
         args.notify_title,
         "--notify-short",
@@ -322,7 +334,7 @@ def build_detached_worker_command(args: argparse.Namespace, project: Path) -> li
         command.extend(["--notify-message", args.notify_message])
     if args.notify_dry_run:
         command.append("--notify-dry-run")
-    command.append("--notify-on-exit" if args.notify_on_exit else "--no-notify-on-exit")
+    command.append("--notify-on-exit")
     return command
 
 
@@ -377,13 +389,10 @@ def maybe_send_notification(
     status: str,
     summary: str,
 ) -> dict[str, Any]:
-    if not args.notify_on_exit:
-        return {"attempted": False, "reason": "notify_on_exit_disabled"}
-
     notify_script = Path(args.notify_script).expanduser().resolve()
     if not notify_script.exists():
         return {
-            "attempted": False,
+            "attempted": True,
             "ok": False,
             "error": f"notify script not found: {notify_script}",
         }
@@ -403,20 +412,47 @@ def maybe_send_notification(
         summary,
         "--timeout",
         str(max(1, int(args.notify_timeout))),
+        "--retries",
+        str(max(1, int(args.notify_retries))),
+        "--retry-delay-seconds",
+        str(max(0, int(args.notify_retry_delay_seconds))),
     ]
     if args.notify_dry_run:
         command.append("--dry-run")
 
-    completed = run_capture(command, cwd=project)
-    parsed_stdout = try_parse_json(completed.stdout)
-    parsed_stderr = try_parse_json(completed.stderr)
+    retries = max(1, int(args.notify_retries))
+    delay_seconds = max(0, int(args.notify_retry_delay_seconds))
+    attempts: list[dict[str, Any]] = []
+    for index in range(1, retries + 1):
+        completed = run_capture(command, cwd=project)
+        parsed_stdout = try_parse_json(completed.stdout)
+        parsed_stderr = try_parse_json(completed.stderr)
+        attempts.append(
+            {
+                "attempt": index,
+                "returncode": completed.returncode,
+                "response": parsed_stdout if parsed_stdout is not None else tail(completed.stdout),
+                "error": parsed_stderr if parsed_stderr is not None else tail(completed.stderr),
+            }
+        )
+        if completed.returncode == 0:
+            return {
+                "attempted": True,
+                "ok": True,
+                "returncode": 0,
+                "command": command,
+                "attempts": attempts,
+            }
+        if index < retries and delay_seconds > 0:
+            time.sleep(delay_seconds)
+
+    last = attempts[-1] if attempts else {}
     return {
         "attempted": True,
-        "ok": completed.returncode == 0,
-        "returncode": completed.returncode,
+        "ok": False,
+        "returncode": int(last.get("returncode", 1) or 1),
         "command": command,
-        "response": parsed_stdout if parsed_stdout is not None else tail(completed.stdout),
-        "error": parsed_stderr if parsed_stderr is not None else tail(completed.stderr),
+        "attempts": attempts,
     }
 
 
