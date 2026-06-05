@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -52,7 +53,7 @@ def main() -> int:
     parser.add_argument("--dangerously-bypass-approvals-and-sandbox", action="store_true")
     parser.add_argument("--max-iterations", type=int, default=999999)
     parser.add_argument("--max-runtime-seconds", type=int, default=0)
-    parser.add_argument("--per-run-timeout-seconds", type=int, default=1800)
+    parser.add_argument("--per-run-timeout-seconds", type=int, default=7200)
     parser.add_argument("--max-stagnant-runs", type=int, default=999999)
     parser.add_argument("--skip-doctor", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -82,6 +83,7 @@ def main() -> int:
         payload = {"ok": False, "error": f"project does not exist: {project}"}
         print_json(payload)
         return 1
+    args.codex_bin = resolve_codex_bin(args.codex_bin)
 
     try:
         supervisor_invocation = resolve_supervisor_invocation(args.python, project, args.supervisor_script)
@@ -148,7 +150,8 @@ def run_foreground(args: argparse.Namespace, project: Path, supervisor_invocatio
         )
 
     if not args.skip_doctor:
-        doctor = run_capture(build_supervisor_command(supervisor_invocation, project, "doctor"), cwd=project)
+        doctor_extra = ["--codex-bin", args.codex_bin] if args.codex_bin.strip() else None
+        doctor = run_capture(build_supervisor_command(supervisor_invocation, project, "doctor", doctor_extra), cwd=project)
         if doctor.returncode != 0:
             raise RunFailure("longrun_supervisor doctor failed", details=process_details(doctor))
 
@@ -279,6 +282,27 @@ def build_run_command(args: argparse.Namespace, project: Path, supervisor_invoca
     if args.dangerously_bypass_approvals_and_sandbox:
         extra.append("--dangerously-bypass-approvals-and-sandbox")
     return build_supervisor_command(supervisor_invocation, project, "run", extra)
+
+
+def resolve_codex_bin(explicit_path: str) -> str:
+    raw = str(explicit_path or "").strip()
+    if raw:
+        return raw
+
+    candidates: list[Path] = []
+    local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
+    if local_app_data:
+        candidates.append(Path(local_app_data) / "OpenAI" / "Codex" / "bin" / "codex.exe")
+    candidates.append(Path.home() / "AppData" / "Local" / "OpenAI" / "Codex" / "bin" / "codex.exe")
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+
+    discovered = shutil.which("codex")
+    if discovered:
+        return discovered
+    return ""
 
 
 def build_detached_worker_command(args: argparse.Namespace, project: Path) -> list[str]:
